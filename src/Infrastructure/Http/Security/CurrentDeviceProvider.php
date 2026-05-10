@@ -8,7 +8,7 @@ use App\Entity\Device;
 use RuntimeException;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
-final readonly class CurrentDeviceProvider
+final readonly class CurrentDeviceProvider implements DeviceContextInterface
 {
     public function __construct(private TokenStorageInterface $tokenStorage)
     {

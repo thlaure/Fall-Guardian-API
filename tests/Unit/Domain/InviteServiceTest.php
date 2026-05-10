@@ -149,4 +149,48 @@ final class InviteServiceTest extends TestCase
         $this->expectException(DomainException::class);
         $this->service->registerPushToken($device, 'fcm-token');
     }
+
+    #[Test]
+    public function itThrowsWhenExistingLinkIsRevoked(): void
+    {
+        $protectedDevice = $this->createMock(Device::class);
+        $caregiverDevice = $this->createMock(Device::class);
+        $caregiverDevice->method('isCaregiver')->willReturn(true);
+
+        $invite = $this->createMock(CaregiverInvite::class);
+        $invite->method('getDevice')->willReturn($protectedDevice);
+
+        $existing = $this->createMock(CaregiverLink::class);
+        $existing->method('getStatus')->willReturn(\App\Enum\CaregiverLinkStatus::Revoked);
+
+        $this->inviteRepository->method('findActiveByCode')->willReturn($invite);
+        $this->linkRepository->method('findExistingPair')->willReturn($existing);
+
+        $this->expectException(DomainException::class);
+        $this->service->acceptInvite('ABCD1234', $caregiverDevice);
+    }
+
+    #[Test]
+    public function itReturnsExistingActiveLinkWithoutCreatingNew(): void
+    {
+        $protectedDevice = $this->createMock(Device::class);
+        $caregiverDevice = $this->createMock(Device::class);
+        $caregiverDevice->method('isCaregiver')->willReturn(true);
+
+        $invite = $this->createMock(CaregiverInvite::class);
+        $invite->method('getDevice')->willReturn($protectedDevice);
+        $invite->expects($this->once())->method('markUsed');
+
+        $existing = $this->createMock(CaregiverLink::class);
+        $existing->method('getStatus')->willReturn(\App\Enum\CaregiverLinkStatus::Active);
+
+        $this->inviteRepository->method('findActiveByCode')->willReturn($invite);
+        $this->linkRepository->method('findExistingPair')->willReturn($existing);
+        $this->inviteRepository->expects($this->once())->method('save');
+        $this->linkRepository->expects($this->never())->method('save');
+
+        $result = $this->service->acceptInvite('ABCD1234', $caregiverDevice);
+
+        $this->assertSame($existing, $result);
+    }
 }

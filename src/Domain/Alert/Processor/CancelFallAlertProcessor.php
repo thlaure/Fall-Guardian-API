@@ -8,8 +8,8 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Domain\Alert\Request\CancelFallAlertInputDTO;
 use App\Domain\Alert\Response\FallAlertOutputDTO;
-use App\Domain\Alert\Service\AlertIngestionService;
-use App\Infrastructure\Http\Security\CurrentDeviceProvider;
+use App\Domain\Alert\Service\AlertIngestionServiceInterface;
+use App\Infrastructure\Http\Security\DeviceContextInterface;
 
 use function is_string;
 
@@ -21,8 +21,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final readonly class CancelFallAlertProcessor implements ProcessorInterface
 {
     public function __construct(
-        private AlertIngestionService $alertIngestionService,
-        private CurrentDeviceProvider $currentDeviceProvider,
+        private AlertIngestionServiceInterface $alertIngestionService,
+        private DeviceContextInterface $currentDeviceProvider,
     ) {
     }
 

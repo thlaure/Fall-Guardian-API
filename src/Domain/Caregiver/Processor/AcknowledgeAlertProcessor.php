@@ -12,7 +12,7 @@ use App\Domain\Caregiver\Port\CaregiverLinkRepositoryInterface;
 use App\Domain\Caregiver\Request\AcknowledgeAlertInputDTO;
 use App\Entity\AlertAcknowledgement;
 use App\Entity\FallAlert;
-use App\Infrastructure\Http\Security\CurrentDeviceProvider;
+use App\Infrastructure\Http\Security\DeviceContextInterface;
 
 use function is_string;
 
@@ -25,7 +25,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final readonly class AcknowledgeAlertProcessor implements ProcessorInterface
 {
     public function __construct(
-        private CurrentDeviceProvider $currentDeviceProvider,
+        private DeviceContextInterface $currentDeviceProvider,
         private FallAlertRepositoryInterface $fallAlertRepository,
         private CaregiverLinkRepositoryInterface $caregiverLinkRepository,
         private AlertAcknowledgementRepositoryInterface $acknowledgementRepository,

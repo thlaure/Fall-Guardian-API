@@ -10,7 +10,7 @@ use App\Domain\Alert\Port\AlertAcknowledgementRepositoryInterface;
 use App\Domain\Alert\Port\FallAlertRepositoryInterface;
 use App\Domain\Caregiver\Port\CaregiverLinkRepositoryInterface;
 use App\Domain\Caregiver\Response\CaregiverAlertOutputDTO;
-use App\Infrastructure\Http\Security\CurrentDeviceProvider;
+use App\Infrastructure\Http\Security\DeviceContextInterface;
 
 /**
  * @implements ProviderInterface<CaregiverAlertOutputDTO>
@@ -18,7 +18,7 @@ use App\Infrastructure\Http\Security\CurrentDeviceProvider;
 final readonly class CaregiverAlertsProvider implements ProviderInterface
 {
     public function __construct(
-        private CurrentDeviceProvider $currentDeviceProvider,
+        private DeviceContextInterface $currentDeviceProvider,
         private CaregiverLinkRepositoryInterface $caregiverLinkRepository,
         private FallAlertRepositoryInterface $fallAlertRepository,
         private AlertAcknowledgementRepositoryInterface $acknowledgementRepository,

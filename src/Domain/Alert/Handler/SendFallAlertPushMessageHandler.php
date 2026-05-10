@@ -74,7 +74,7 @@ final readonly class SendFallAlertPushMessageHandler
             }
         }
 
-        if ($attempted === 0 || $sentCount === 0) {
+        if (0 === $attempted || 0 === $sentCount) {
             $alert->markFailed();
         } elseif ($sentCount < $attempted) {
             $alert->markPartiallySent();

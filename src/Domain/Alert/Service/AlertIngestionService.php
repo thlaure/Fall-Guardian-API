@@ -11,7 +11,7 @@ use App\Entity\FallAlert;
 use DateTimeImmutable;
 use Symfony\Component\Messenger\MessageBusInterface;
 
-final readonly class AlertIngestionService
+final readonly class AlertIngestionService implements AlertIngestionServiceInterface
 {
     public function __construct(
         private FallAlertRepositoryInterface $fallAlertRepository,

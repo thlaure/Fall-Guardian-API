@@ -86,4 +86,52 @@ final class AlertIngestionServiceTest extends TestCase
 
         self::assertNull($result);
     }
+
+    #[Test]
+    public function itReturnsAlertForMatchingDevice(): void
+    {
+        $uuid = \Symfony\Component\Uid\Uuid::v7();
+        $device = $this->createMock(Device::class);
+        $device->method('getId')->willReturn($uuid);
+
+        $alert = $this->createMock(FallAlert::class);
+        $alertDevice = $this->createMock(Device::class);
+        $alertDevice->method('getId')->willReturn($uuid);
+        $alert->method('getDevice')->willReturn($alertDevice);
+
+        $this->repository->method('findById')->willReturn($alert);
+
+        $result = $this->service->getAlertForDevice($device, 'some-id');
+
+        self::assertSame($alert, $result);
+    }
+
+    #[Test]
+    public function itReturnsNullWhenAlertBelongsToDifferentDevice(): void
+    {
+        $device = $this->createMock(Device::class);
+        $device->method('getId')->willReturn(\Symfony\Component\Uid\Uuid::v7());
+
+        $alert = $this->createMock(FallAlert::class);
+        $alertDevice = $this->createMock(Device::class);
+        $alertDevice->method('getId')->willReturn(\Symfony\Component\Uid\Uuid::v7());
+        $alert->method('getDevice')->willReturn($alertDevice);
+
+        $this->repository->method('findById')->willReturn($alert);
+
+        $result = $this->service->getAlertForDevice($device, 'some-id');
+
+        self::assertNull($result);
+    }
+
+    #[Test]
+    public function itReturnsNullWhenAlertNotFound(): void
+    {
+        $device = $this->createMock(Device::class);
+        $this->repository->method('findById')->willReturn(null);
+
+        $result = $this->service->getAlertForDevice($device, 'unknown');
+
+        self::assertNull($result);
+    }
 }

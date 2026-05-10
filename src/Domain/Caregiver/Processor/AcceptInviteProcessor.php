@@ -7,8 +7,8 @@ namespace App\Domain\Caregiver\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Domain\Caregiver\Request\AcceptInviteInputDTO;
-use App\Domain\Caregiver\Service\InviteService;
-use App\Infrastructure\Http\Security\CurrentDeviceProvider;
+use App\Domain\Caregiver\Service\InviteServiceInterface;
+use App\Infrastructure\Http\Security\DeviceContextInterface;
 use DomainException;
 
 use function is_string;
@@ -23,8 +23,8 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 final readonly class AcceptInviteProcessor implements ProcessorInterface
 {
     public function __construct(
-        private InviteService $inviteService,
-        private CurrentDeviceProvider $currentDeviceProvider,
+        private InviteServiceInterface $inviteService,
+        private DeviceContextInterface $currentDeviceProvider,
     ) {
     }
 
