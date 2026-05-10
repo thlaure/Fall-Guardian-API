@@ -142,19 +142,13 @@ Use these files as the common behavior layer:
 
 Use the matching workflow when the task fits:
 
-- repository scan or inspection: `.claude/skills/scan-project/SKILL.md`
 - new functionality: `.claude/skills/new-feature/SKILL.md`
 - bug fixing: `.claude/skills/bug-fix/SKILL.md`
 - review: `.claude/skills/review-change/SKILL.md`
 - security review: `.claude/skills/security-review/SKILL.md`
-- verification and checks: `.claude/skills/verify-quality/SKILL.md`
 - commit preparation: `.claude/skills/prepare-commit/SKILL.md`
-- instruction improvement: `.claude/skills/improve-instructions/SKILL.md`
+- quality/debugging failures: `.claude/skills/debug-quality/SKILL.md`
 - execution discipline for review, refactor, or ambiguity-heavy tasks: `.claude/skills/karpathy-guidelines/SKILL.md`
-- new domain service: `.claude/skills/new-domain-service/SKILL.md`
-- new repository port + implementation: `.claude/skills/new-repository/SKILL.md`
-- quality/debugging support: `.claude/skills/debug-quality/SKILL.md`
-- commit message preparation: `.claude/skills/conventional-commit/SKILL.md`
 - acceptance-criteria verification: `.claude/agents/qa-reviewer.md`
 - independent security review: `.claude/agents/security-reviewer.md`
 

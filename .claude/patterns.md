@@ -208,13 +208,42 @@ final class SendFallAlertPushMessageHandler
 
 ## Domain Service (pure, stateless)
 
+Location: `src/Domain/{Feature}/Service/{Rule}Service.php`
+Test: `tests/Unit/Domain/{Feature}/Service/{Rule}ServiceTest.php`
+
+Rules:
+- No infrastructure dependencies — receive already-resolved values as parameters
+- No Port calls — services receive values, not entities fetched from repositories
+- Single responsibility — one rule, one class
+- Descriptive name: `AlertEscalationResolver`, `PushTokenValidator` — never generic suffixes
+- `final readonly` unless framework constraints prevent it
+- Stateless — all inputs through method parameters
+
 ```php
-final readonly class AlertIngestionService
+final readonly class AlertEscalationResolver
 {
-    // Receives already-resolved values — no I/O, no side effects
     public function shouldEscalate(string $status, \DateTimeInterface $detectedAt): bool
     {
-        // pure domain rule
+        // pure domain rule — no I/O, no side effects
+    }
+}
+```
+
+Unit test for a pure service — no mocks needed, pass concrete values:
+
+```php
+final class AlertEscalationResolverTest extends TestCase
+{
+    private AlertEscalationResolver $service;
+
+    protected function setUp(): void
+    {
+        $this->service = new AlertEscalationResolver();
+    }
+
+    public function testShouldEscalateWithActiveStatusReturnsTrue(): void
+    {
+        $this->assertTrue($this->service->shouldEscalate('active', new \DateTimeImmutable('-5 minutes')));
     }
 }
 ```
