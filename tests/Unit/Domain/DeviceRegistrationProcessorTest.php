@@ -5,31 +5,41 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Domain;
 
 use ApiPlatform\Metadata\Operation;
+use App\Domain\Device\Port\DeviceRepositoryInterface;
 use App\Domain\Device\Processor\DeviceRegistrationProcessor;
 use App\Domain\Device\Request\DeviceRegistrationInputDTO;
-use App\Domain\Device\Response\DeviceRegistrationOutputDTO;
 use App\Domain\Device\Service\DeviceRegistrationService;
+use App\Entity\Device;
+use App\Infrastructure\Http\Security\DeviceTokenHasher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 final class DeviceRegistrationProcessorTest extends TestCase
 {
-    private DeviceRegistrationService&MockObject $service;
+    private DeviceRepositoryInterface&MockObject $deviceRepository;
 
     private DeviceRegistrationProcessor $processor;
 
     protected function setUp(): void
     {
-        $this->service = $this->createMock(DeviceRegistrationService::class);
-        $this->processor = new DeviceRegistrationProcessor($this->service);
+        $this->deviceRepository = $this->createMock(DeviceRepositoryInterface::class);
+        $service = new DeviceRegistrationService(new DeviceTokenHasher(), $this->deviceRepository);
+        $this->processor = new DeviceRegistrationProcessor($service);
     }
 
     #[Test]
     public function itDelegatesToServiceAndReturnsDTO(): void
     {
-        $output = new DeviceRegistrationOutputDTO('device-id', 'plain-token');
-        $this->service->method('register')->willReturn($output);
+        $savedDevice = null;
+        $this->deviceRepository
+            ->expects($this->once())
+            ->method('save')
+            ->with($this->callback(static function (Device $device) use (&$savedDevice): bool {
+                $savedDevice = $device;
+
+                return true;
+            }));
 
         $data = new DeviceRegistrationInputDTO();
         $data->platform = 'ios';
@@ -38,7 +48,10 @@ final class DeviceRegistrationProcessorTest extends TestCase
 
         $result = $this->processor->process($data, $this->createMock(Operation::class));
 
-        $this->assertSame('device-id', $result->deviceId);
-        $this->assertSame('plain-token', $result->deviceToken);
+        $this->assertInstanceOf(Device::class, $savedDevice);
+        $this->assertSame($savedDevice->getPublicId(), $result->deviceId);
+        $this->assertSame('ios', $savedDevice->getPlatform());
+        $this->assertSame('1.0.0', $savedDevice->getAppVersion());
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $result->deviceToken);
     }
 }

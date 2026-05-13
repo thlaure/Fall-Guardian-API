@@ -1,4 +1,4 @@
-.PHONY: help up down build rebuild shell logs logs-app logs-messenger ps composer-install composer-update lint lint-dry analyse rector rector-dry quality grumphp test-unit test-integration test test-behat coverage-text coverage-html migrate db-diff db-reset cache-clear routes console messenger-consume worker-failed worker-retry install
+.PHONY: help up down build rebuild shell logs logs-app logs-messenger ps composer-install composer-update lint lint-dry analyse rector rector-dry quality grumphp test-db test-unit test-integration test test-behat coverage-text coverage-html migrate db-diff db-reset cache-clear routes console messenger-consume worker-failed worker-retry install
 
 .DEFAULT_GOAL := help
 
@@ -69,13 +69,18 @@ quality: lint-dry analyse rector-dry ## Run all quality tools
 grumphp: ## Run GrumPHP
 	$(DOCKER_COMPOSE) exec app vendor/bin/grumphp run
 
+test-db: ## Recreate the test database schema
+	$(DOCKER_COMPOSE) exec app php bin/console doctrine:database:create --env=test --if-not-exists
+	$(DOCKER_COMPOSE) exec app php bin/console doctrine:schema:drop --env=test --force --full-database
+	$(DOCKER_COMPOSE) exec app php bin/console doctrine:schema:create --env=test
+
 test-unit: ## Run unit tests
 	$(DOCKER_COMPOSE) exec app vendor/bin/phpunit --testsuite=unit
 
-test-integration: ## Run integration tests
+test-integration: test-db ## Run integration tests
 	$(DOCKER_COMPOSE) exec app vendor/bin/phpunit --testsuite=integration
 
-test: ## Run all PHPUnit tests
+test: test-db ## Run all PHPUnit tests
 	$(DOCKER_COMPOSE) exec app vendor/bin/phpunit --coverage-text
 
 coverage-html: ## Generate HTML coverage report (var/reports/phpunit-coverage/index.html)
