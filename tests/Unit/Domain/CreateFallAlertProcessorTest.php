@@ -12,6 +12,7 @@ use App\Entity\Device;
 use App\Entity\FallAlert;
 use App\Enum\FallAlertStatus;
 use App\Infrastructure\Http\Security\DeviceContextInterface;
+use App\Infrastructure\RateLimit\EndpointRateLimiterInterface;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -25,22 +26,27 @@ final class CreateFallAlertProcessorTest extends TestCase
 
     private DeviceContextInterface&MockObject $currentDeviceProvider;
 
+    private EndpointRateLimiterInterface&MockObject $rateLimiter;
+
     private CreateFallAlertProcessor $processor;
 
     protected function setUp(): void
     {
         $this->alertIngestionService = $this->createMock(AlertIngestionServiceInterface::class);
         $this->currentDeviceProvider = $this->createMock(DeviceContextInterface::class);
-        $this->processor = new CreateFallAlertProcessor($this->alertIngestionService, $this->currentDeviceProvider);
+        $this->rateLimiter = $this->createMock(EndpointRateLimiterInterface::class);
+        $this->processor = new CreateFallAlertProcessor($this->alertIngestionService, $this->currentDeviceProvider, $this->rateLimiter);
     }
 
     #[Test]
     public function itCreatesAlertAndReturnsOutputDTO(): void
     {
         $device = $this->createMock(Device::class);
+        $device->method('getPublicId')->willReturn('device-1');
         $alert = $this->buildAlertMock('client-001');
 
         $this->currentDeviceProvider->method('requireDevice')->willReturn($device);
+        $this->rateLimiter->expects($this->once())->method('consume')->with('fall_alert_create', 6, 60, 'device-1');
         $this->alertIngestionService->method('createAlert')->willReturn($alert);
 
         $data = new CreateFallAlertInputDTO();
@@ -58,6 +64,7 @@ final class CreateFallAlertProcessorTest extends TestCase
     public function itFallsBackToNowWhenTimestampAbsent(): void
     {
         $device = $this->createMock(Device::class);
+        $device->method('getPublicId')->willReturn('device-2');
         $alert = $this->buildAlertMock('client-002');
 
         $this->currentDeviceProvider->method('requireDevice')->willReturn($device);

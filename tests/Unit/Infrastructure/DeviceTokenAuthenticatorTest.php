@@ -27,7 +27,7 @@ final class DeviceTokenAuthenticatorTest extends TestCase
     protected function setUp(): void
     {
         $this->deviceRepository = $this->createMock(DeviceRepositoryInterface::class);
-        $this->authenticator = new DeviceTokenAuthenticator($this->deviceRepository, new DeviceTokenHasher());
+        $this->authenticator = new DeviceTokenAuthenticator($this->deviceRepository, new DeviceTokenHasher('test-secret'));
     }
 
     #[Test]
@@ -51,7 +51,7 @@ final class DeviceTokenAuthenticatorTest extends TestCase
     public function itLoadsDeviceUserFromBearerToken(): void
     {
         $plainToken = 'plain-token';
-        $hashedToken = hash('sha256', $plainToken);
+        $hashedToken = hash_hmac('sha256', $plainToken, 'test-secret');
         $device = new Device('device-id', $hashedToken, 'ios', '1.0.0');
 
         $this->deviceRepository
@@ -59,6 +59,7 @@ final class DeviceTokenAuthenticatorTest extends TestCase
             ->method('findActiveByTokenHash')
             ->with($hashedToken)
             ->willReturn($device);
+        $this->deviceRepository->expects($this->once())->method('save')->with($device);
 
         $request = Request::create('/api/v1/alerts');
         $request->headers->set('Authorization', 'Bearer '.$plainToken);
@@ -71,6 +72,35 @@ final class DeviceTokenAuthenticatorTest extends TestCase
         self::assertInstanceOf(DeviceApiUser::class, $user);
         self::assertSame('device:device-id', $user->getUserIdentifier());
         self::assertNotNull($device->getLastSeenAt());
+    }
+
+    #[Test]
+    public function itAcceptsLegacySha256TokenHashDuringTransition(): void
+    {
+        $plainToken = 'plain-token';
+        $hmacHash = hash_hmac('sha256', $plainToken, 'test-secret');
+        $legacyHash = hash('sha256', $plainToken);
+        $device = new Device('device-id', $legacyHash, 'ios', '1.0.0');
+
+        $this->deviceRepository
+            ->expects($this->exactly(2))
+            ->method('findActiveByTokenHash')
+            ->willReturnMap([
+                [$hmacHash, null],
+                [$legacyHash, $device],
+            ]);
+        $this->deviceRepository->expects($this->once())->method('save')->with($device);
+
+        $request = Request::create('/api/v1/alerts');
+        $request->headers->set('Authorization', 'Bearer '.$plainToken);
+
+        $passport = $this->authenticator->authenticate($request);
+        $userBadge = $passport->getBadge(UserBadge::class);
+        self::assertInstanceOf(UserBadge::class, $userBadge);
+
+        self::assertInstanceOf(DeviceApiUser::class, $userBadge->getUser());
+        self::assertNotNull($device->getLastSeenAt());
+        self::assertSame($hmacHash, $device->getTokenHash());
     }
 
     #[Test]

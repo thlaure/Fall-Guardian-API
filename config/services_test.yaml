@@ -1,4 +1,6 @@
 services:
+    App\Infrastructure\RateLimit\EndpointRateLimiterInterface: '@App\Infrastructure\RateLimit\NullEndpointRateLimiter'
+
     App\Tests\Behat\ApiContext:
         public: true
         autowire: true

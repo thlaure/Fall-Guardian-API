@@ -69,6 +69,12 @@ class Device
         return $this->tokenHash;
     }
 
+    public function rotateTokenHash(string $tokenHash): void
+    {
+        $this->tokenHash = $tokenHash;
+        $this->touch();
+    }
+
     public function getPlatform(): string
     {
         return $this->platform;

@@ -29,14 +29,20 @@ final class FcmPushGatewayTest extends TestCase
 
         $assertion = null;
         $fcmPayload = null;
-        $client = new MockHttpClient(static function (string $method, string $url, array $options) use (&$assertion, &$fcmPayload): MockResponse {
+        $oauthOptions = null;
+        $fcmOptions = null;
+        $oauthCalls = 0;
+        $client = new MockHttpClient(static function (string $method, string $url, array $options) use (&$assertion, &$fcmPayload, &$oauthOptions, &$fcmOptions, &$oauthCalls): MockResponse {
             if ('https://oauth2.googleapis.com/token' === $url) {
+                ++$oauthCalls;
+                $oauthOptions = $options;
                 parse_str((string) $options['body'], $body);
                 $assertion = is_string($body['assertion'] ?? null) ? $body['assertion'] : null;
 
-                return new MockResponse(json_encode(['access_token' => 'access-token']) ?: '{}');
+                return new MockResponse(json_encode(['access_token' => 'access-token', 'expires_in' => 3600]) ?: '{}');
             }
 
+            $fcmOptions = $options;
             $decodedPayload = json_decode((string) $options['body'], true);
             $fcmPayload = is_array($decodedPayload) ? $decodedPayload : null;
 
@@ -53,8 +59,12 @@ final class FcmPushGatewayTest extends TestCase
         );
 
         $gateway->send('fcm-token', 'alert-id', '2026-01-01T00:00:00+00:00', null, null);
+        $gateway->send('fcm-token-2', 'alert-id-2', '2026-01-01T00:00:00+00:00', null, null);
 
         self::assertIsString($assertion);
+        self::assertSame(1, $oauthCalls);
+        self::assertSame(10.0, $oauthOptions['timeout'] ?? null);
+        self::assertSame(10.0, $fcmOptions['timeout'] ?? null);
         $segments = explode('.', $assertion);
         self::assertCount(3, $segments);
 

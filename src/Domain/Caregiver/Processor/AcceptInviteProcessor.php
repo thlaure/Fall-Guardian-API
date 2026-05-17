@@ -9,6 +9,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Domain\Caregiver\Request\AcceptInviteInputDTO;
 use App\Domain\Caregiver\Service\InviteServiceInterface;
 use App\Infrastructure\Http\Security\DeviceContextInterface;
+use App\Infrastructure\RateLimit\EndpointRateLimiterInterface;
 use DomainException;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -22,6 +23,7 @@ final readonly class AcceptInviteProcessor implements ProcessorInterface
     public function __construct(
         private InviteServiceInterface $inviteService,
         private DeviceContextInterface $currentDeviceProvider,
+        private EndpointRateLimiterInterface $rateLimiter,
     ) {
     }
 
@@ -29,11 +31,14 @@ final readonly class AcceptInviteProcessor implements ProcessorInterface
     {
         $rawCode = $uriVariables['code'] ?? '';
         $code = is_string($rawCode) ? $rawCode : '';
+        $device = $this->currentDeviceProvider->requireDevice();
+
+        $this->rateLimiter->consume('invite_accept', 5, 600, $device->getPublicId());
 
         try {
             $this->inviteService->acceptInvite(
                 $code,
-                $this->currentDeviceProvider->requireDevice(),
+                $device,
             );
         } catch (RuntimeException $e) {
             throw new NotFoundHttpException($e->getMessage(), $e);

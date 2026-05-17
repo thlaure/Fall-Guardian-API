@@ -10,8 +10,10 @@ use App\Domain\Alert\Request\CreateFallAlertInputDTO;
 use App\Domain\Alert\Response\FallAlertOutputDTO;
 use App\Domain\Alert\Service\AlertIngestionServiceInterface;
 use App\Infrastructure\Http\Security\DeviceContextInterface;
+use App\Infrastructure\RateLimit\EndpointRateLimiterInterface;
 use DateTimeImmutable;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
  * @implements ProcessorInterface<CreateFallAlertInputDTO, FallAlertOutputDTO>
@@ -21,18 +23,23 @@ final readonly class CreateFallAlertProcessor implements ProcessorInterface
     public function __construct(
         private AlertIngestionServiceInterface $alertIngestionService,
         private DeviceContextInterface $currentDeviceProvider,
+        private EndpointRateLimiterInterface $rateLimiter,
     ) {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): FallAlertOutputDTO
     {
-        assert($data instanceof CreateFallAlertInputDTO);
+        if (!$data instanceof CreateFallAlertInputDTO) {
+            throw new BadRequestHttpException('Invalid fall alert payload.');
+        }
 
         $device = $this->currentDeviceProvider->requireDevice();
 
         if ($device->isCaregiver()) {
             throw new AccessDeniedHttpException('Caregiver devices cannot create fall alerts.');
         }
+
+        $this->rateLimiter->consume('fall_alert_create', 6, 60, $device->getPublicId());
 
         $alert = $this->alertIngestionService->createAlert(
             $device,

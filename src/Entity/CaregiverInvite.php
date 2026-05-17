@@ -26,7 +26,7 @@ class CaregiverInvite
 
     public function __construct(#[ORM\ManyToOne(targetEntity: Device::class)]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-        private Device $device, #[ORM\Column(length: 8)]
+        private Device $device, #[ORM\Column(length: 32)]
         private string $code, #[ORM\Column(name: 'expires_at')]
         private DateTimeImmutable $expiresAt)
     {

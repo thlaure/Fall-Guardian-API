@@ -50,7 +50,8 @@ final class InviteServiceTest extends TestCase
         $invite = $this->service->createInvite($device);
 
         self::assertInstanceOf(CaregiverInvite::class, $invite);
-        self::assertSame(8, strlen($invite->getCode()));
+        self::assertSame(32, strlen($invite->getCode()));
+        self::assertMatchesRegularExpression('/^[A-F0-9]{32}$/', $invite->getCode());
     }
 
     #[Test]
