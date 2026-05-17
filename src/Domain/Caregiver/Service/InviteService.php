@@ -18,7 +18,7 @@ use RuntimeException;
 
 final readonly class InviteService implements InviteServiceInterface
 {
-    private const int CODE_LENGTH = 8;
+    private const int CODE_BYTES = 16;
 
     private const int TTL_MINUTES = 30;
 
@@ -35,7 +35,7 @@ final readonly class InviteService implements InviteServiceInterface
             throw new DomainException('Only protected-person devices can create invites.');
         }
 
-        $code = strtoupper(substr(bin2hex(random_bytes(4)), 0, self::CODE_LENGTH));
+        $code = strtoupper(bin2hex(random_bytes(self::CODE_BYTES)));
         $expiresAt = new DateTimeImmutable(sprintf('+%d minutes', self::TTL_MINUTES));
 
         $invite = new CaregiverInvite($protectedDevice, $code, $expiresAt);

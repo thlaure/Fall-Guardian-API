@@ -10,19 +10,27 @@ use App\Domain\Device\Request\DeviceRegistrationInputDTO;
 use App\Domain\Device\Response\DeviceRegistrationOutputDTO;
 use App\Domain\Device\Service\DeviceRegistrationService;
 use App\Enum\DeviceType;
+use App\Infrastructure\RateLimit\EndpointRateLimiterInterface;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
  * @implements ProcessorInterface<DeviceRegistrationInputDTO, DeviceRegistrationOutputDTO>
  */
 final readonly class DeviceRegistrationProcessor implements ProcessorInterface
 {
-    public function __construct(private DeviceRegistrationService $deviceRegistrationService)
-    {
+    public function __construct(
+        private DeviceRegistrationService $deviceRegistrationService,
+        private EndpointRateLimiterInterface $rateLimiter,
+    ) {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): DeviceRegistrationOutputDTO
     {
-        assert($data instanceof DeviceRegistrationInputDTO);
+        if (!$data instanceof DeviceRegistrationInputDTO) {
+            throw new BadRequestHttpException('Invalid device registration payload.');
+        }
+
+        $this->rateLimiter->consume('device_registration', 20, 60);
 
         return $this->deviceRegistrationService->register(
             $data->platform,

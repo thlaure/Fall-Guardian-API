@@ -40,15 +40,28 @@ final class DeviceTokenAuthenticator extends AbstractAuthenticator
         }
 
         $hashedToken = $this->tokenHasher->hash($matches['token']);
+        $legacyHash = $this->tokenHasher->legacyHash($matches['token']);
 
-        return new SelfValidatingPassport(new UserBadge($hashedToken, function (string $userIdentifier): DeviceApiUser {
+        return new SelfValidatingPassport(new UserBadge($hashedToken, function (string $userIdentifier) use ($legacyHash): DeviceApiUser {
             $device = $this->deviceRepository->findActiveByTokenHash($userIdentifier);
+            $authenticatedWithLegacyHash = false;
+
+            if (!$device instanceof \App\Entity\Device) {
+                $device = $this->deviceRepository->findActiveByTokenHash($legacyHash);
+                $authenticatedWithLegacyHash = $device instanceof \App\Entity\Device;
+            }
 
             if (!$device instanceof \App\Entity\Device) {
                 throw new AuthenticationException('Invalid device token.');
             }
 
             $device->touchSeenAt();
+
+            if ($authenticatedWithLegacyHash) {
+                $device->rotateTokenHash($userIdentifier);
+            }
+
+            $this->deviceRepository->save($device);
 
             return new DeviceApiUser($device);
         }));

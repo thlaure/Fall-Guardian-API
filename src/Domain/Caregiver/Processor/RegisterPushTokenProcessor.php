@@ -10,6 +10,7 @@ use App\Domain\Caregiver\Request\RegisterPushTokenInputDTO;
 use App\Domain\Caregiver\Service\InviteServiceInterface;
 use App\Infrastructure\Http\Security\DeviceContextInterface;
 use DomainException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
@@ -25,7 +26,9 @@ final readonly class RegisterPushTokenProcessor implements ProcessorInterface
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): null
     {
-        assert($data instanceof RegisterPushTokenInputDTO);
+        if (!$data instanceof RegisterPushTokenInputDTO) {
+            throw new BadRequestHttpException('Invalid push token payload.');
+        }
 
         try {
             $this->inviteService->registerPushToken(

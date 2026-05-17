@@ -11,6 +11,7 @@ parameters:
     app.push_provider: '%env(string:PUSH_PROVIDER)%'
     app.fcm.project_id: '%env(string:FCM_PROJECT_ID)%'
     app.fcm.service_account_json: '%env(string:FCM_SERVICE_ACCOUNT_JSON)%'
+    app.device_token_hash_secret: '%env(string:DEVICE_TOKEN_HASH_SECRET)%'
 
 services:
     # default configuration for services in *this* file
@@ -34,6 +35,7 @@ services:
     App\Domain\Caregiver\Port\CaregiverInviteRepositoryInterface: '@App\Infrastructure\Persistence\DoctrineCaregiverInviteRepository'
     App\Domain\Caregiver\Port\CaregiverLinkRepositoryInterface: '@App\Infrastructure\Persistence\DoctrineCaregiverLinkRepository'
     App\Domain\Caregiver\Port\CaregiverPushTokenRepositoryInterface: '@App\Infrastructure\Persistence\DoctrineCaregiverPushTokenRepository'
+    App\Infrastructure\RateLimit\EndpointRateLimiterInterface: '@App\Infrastructure\RateLimit\FixedWindowEndpointRateLimiter'
 
     App\Infrastructure\Push\FakePushStore:
         arguments:
@@ -48,6 +50,10 @@ services:
         arguments:
             $projectId: '%app.fcm.project_id%'
             $serviceAccountJson: '%app.fcm.service_account_json%'
+
+    App\Infrastructure\Http\Security\DeviceTokenHasher:
+        arguments:
+            $secret: '%app.device_token_hash_secret%'
 
     App\Infrastructure\Push\DelegatingPushGateway:
         arguments:

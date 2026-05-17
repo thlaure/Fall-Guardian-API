@@ -9,7 +9,7 @@ use RuntimeException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final readonly class FcmPushGateway implements PushGatewayInterface
+final class FcmPushGateway implements PushGatewayInterface
 {
     private const string FCM_SEND_URL = 'https://fcm.googleapis.com/v1/projects/%s/messages:send';
 
@@ -17,10 +17,18 @@ final readonly class FcmPushGateway implements PushGatewayInterface
 
     private const string OAUTH_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
 
+    private const int TOKEN_EXPIRY_SAFETY_SECONDS = 60;
+
+    private const float HTTP_TIMEOUT_SECONDS = 10.0;
+
+    private ?string $cachedAccessToken = null;
+
+    private int $cachedAccessTokenExpiresAt = 0;
+
     public function __construct(
-        private HttpClientInterface $httpClient,
-        private string $projectId,
-        private string $serviceAccountJson,
+        private readonly HttpClientInterface $httpClient,
+        private readonly string $projectId,
+        private readonly string $serviceAccountJson,
     ) {
     }
 
@@ -87,6 +95,7 @@ final readonly class FcmPushGateway implements PushGatewayInterface
                     'Content-Type' => 'application/json',
                 ],
                 'body' => json_encode($payload),
+                'timeout' => self::HTTP_TIMEOUT_SECONDS,
             ],
         );
 
@@ -96,7 +105,7 @@ final readonly class FcmPushGateway implements PushGatewayInterface
         $body = json_decode($responseBody, true);
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            throw new RuntimeException(sprintf('FCM send failed (HTTP %d): %s', $statusCode, $responseBody));
+            throw new RuntimeException(sprintf('FCM send failed (HTTP %d).', $statusCode));
         }
 
         $providerMessageId = is_array($body) && isset($body['name']) && is_string($body['name'])
@@ -111,6 +120,12 @@ final readonly class FcmPushGateway implements PushGatewayInterface
 
     private function getAccessToken(): string
     {
+        $now = time();
+
+        if (null !== $this->cachedAccessToken && $this->cachedAccessTokenExpiresAt > $now + self::TOKEN_EXPIRY_SAFETY_SECONDS) {
+            return $this->cachedAccessToken;
+        }
+
         /** @var array<string, mixed>|null $serviceAccount */
         $serviceAccount = json_decode($this->serviceAccountJson, true);
 
@@ -121,7 +136,6 @@ final readonly class FcmPushGateway implements PushGatewayInterface
         $clientEmail = is_string($serviceAccount['client_email'] ?? null) ? $serviceAccount['client_email'] : '';
         $privateKeyPem = is_string($serviceAccount['private_key'] ?? null) ? $serviceAccount['private_key'] : '';
 
-        $now = time();
         $headerJson = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
         $claimsJson = json_encode([
             'iss' => $clientEmail,
@@ -153,6 +167,7 @@ final readonly class FcmPushGateway implements PushGatewayInterface
             'headers' => [
                 'Content-Type' => 'application/x-www-form-urlencoded',
             ],
+            'timeout' => self::HTTP_TIMEOUT_SECONDS,
         ]);
 
         /** @var array<string, mixed>|null $tokenData */
@@ -162,7 +177,11 @@ final readonly class FcmPushGateway implements PushGatewayInterface
             throw new RuntimeException('Failed to obtain FCM access token.');
         }
 
-        return $tokenData['access_token'];
+        $expiresIn = isset($tokenData['expires_in']) && is_int($tokenData['expires_in']) ? $tokenData['expires_in'] : 3600;
+        $this->cachedAccessToken = $tokenData['access_token'];
+        $this->cachedAccessTokenExpiresAt = $now + $expiresIn;
+
+        return $this->cachedAccessToken;
     }
 
     private static function base64UrlEncode(string $value): string

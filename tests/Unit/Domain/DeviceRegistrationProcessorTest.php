@@ -11,6 +11,7 @@ use App\Domain\Device\Request\DeviceRegistrationInputDTO;
 use App\Domain\Device\Service\DeviceRegistrationService;
 use App\Entity\Device;
 use App\Infrastructure\Http\Security\DeviceTokenHasher;
+use App\Infrastructure\RateLimit\EndpointRateLimiterInterface;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -19,13 +20,16 @@ final class DeviceRegistrationProcessorTest extends TestCase
 {
     private DeviceRepositoryInterface&MockObject $deviceRepository;
 
+    private EndpointRateLimiterInterface&MockObject $rateLimiter;
+
     private DeviceRegistrationProcessor $processor;
 
     protected function setUp(): void
     {
         $this->deviceRepository = $this->createMock(DeviceRepositoryInterface::class);
-        $service = new DeviceRegistrationService(new DeviceTokenHasher(), $this->deviceRepository);
-        $this->processor = new DeviceRegistrationProcessor($service);
+        $this->rateLimiter = $this->createMock(EndpointRateLimiterInterface::class);
+        $service = new DeviceRegistrationService(new DeviceTokenHasher('test-secret'), $this->deviceRepository);
+        $this->processor = new DeviceRegistrationProcessor($service, $this->rateLimiter);
     }
 
     #[Test]
@@ -40,6 +44,7 @@ final class DeviceRegistrationProcessorTest extends TestCase
 
                 return true;
             }));
+        $this->rateLimiter->expects($this->once())->method('consume')->with('device_registration', 20, 60);
 
         $data = new DeviceRegistrationInputDTO();
         $data->platform = 'ios';

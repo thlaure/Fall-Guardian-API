@@ -23,7 +23,7 @@ final class DeviceRegistrationServiceTest extends TestCase
     {
         $this->repository = $this->createMock(DeviceRepositoryInterface::class);
         // DeviceTokenHasher is final — use the real instance (pure, no I/O)
-        $this->service = new DeviceRegistrationService(new DeviceTokenHasher(), $this->repository);
+        $this->service = new DeviceRegistrationService(new DeviceTokenHasher('test-secret'), $this->repository);
     }
 
     #[Test]
