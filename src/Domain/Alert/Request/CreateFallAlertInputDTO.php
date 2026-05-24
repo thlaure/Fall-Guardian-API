@@ -6,6 +6,7 @@ namespace App\Domain\Alert\Request;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model\Operation;
 use App\Domain\Alert\Processor\CreateFallAlertProcessor;
 use App\Domain\Alert\Response\FallAlertOutputDTO;
 use DateTimeImmutable;
@@ -16,6 +17,12 @@ use Symfony\Component\Validator\Constraints as Assert;
         uriTemplate: '/api/v1/fall-alerts',
         output: FallAlertOutputDTO::class,
         read: false,
+        openapi: new Operation(
+            tags: ['Fall alerts'],
+            summary: 'Report a detected fall',
+            description: 'Reports a fall detected for the authenticated protected-person device. Use a stable clientAlertId to identify this alert across retries and later cancellation.',
+            security: [['deviceBearer' => []]],
+        ),
         processor: CreateFallAlertProcessor::class,
     ),
 ])]
@@ -32,7 +39,9 @@ final class CreateFallAlertInputDTO
     #[Assert\Length(max: 8)]
     public string $locale = 'en';
 
+    #[Assert\Range(min: -90, max: 90)]
     public ?float $latitude = null;
 
+    #[Assert\Range(min: -180, max: 180)]
     public ?float $longitude = null;
 }

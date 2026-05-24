@@ -60,3 +60,8 @@ services:
             $provider: '%app.push_provider%'
 
     App\Domain\Push\Port\PushGatewayInterface: '@App\Infrastructure\Push\DelegatingPushGateway'
+
+    App\Infrastructure\OpenApi\FallGuardianOpenApiFactory:
+        decorates: 'api_platform.openapi.factory'
+        arguments:
+            $decorated: '@App\Infrastructure\OpenApi\FallGuardianOpenApiFactory.inner'

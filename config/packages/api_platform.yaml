@@ -8,3 +8,9 @@ api_platform:
     formats:
         jsonld: ['application/ld+json']
         json: ['application/json']
+    swagger:
+        persist_authorization: true
+        http_auth:
+            deviceBearer:
+                scheme: bearer
+                bearerFormat: Device token
