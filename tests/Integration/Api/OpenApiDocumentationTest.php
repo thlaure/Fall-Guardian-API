@@ -44,5 +44,9 @@ final class OpenApiDocumentationTest extends WebTestCase
             'requestBody',
             $documentation['paths']['/api/v1/fall-alerts/{clientAlertId}/cancel']['post'],
         );
+        self::assertArrayNotHasKey(
+            '429',
+            $documentation['paths']['/api/v1/fall-alerts/{id}/acknowledge']['post']['responses'],
+        );
     }
 }

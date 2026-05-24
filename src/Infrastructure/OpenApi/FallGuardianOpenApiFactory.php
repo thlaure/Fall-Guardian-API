@@ -98,7 +98,6 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
             '401' => 'Missing or invalid device bearer token.',
             '403' => 'The caregiver is not linked to the protected person for this alert.',
             '404' => 'No fall alert with that identifier was found.',
-            '429' => 'Too many alert acknowledgement requests from this client.',
         ], successDescriptions: [204 => 'Alert acknowledgement recorded.']);
 
         return $openApi;
