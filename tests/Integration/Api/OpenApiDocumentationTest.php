@@ -32,6 +32,14 @@ final class OpenApiDocumentationTest extends WebTestCase
             48.8566,
             $documentation['paths']['/api/v1/fall-alerts']['post']['requestBody']['content']['application/json']['example']['latitude'],
         );
+        self::assertSame(
+            'Detected fall event and optional location.',
+            $documentation['paths']['/api/v1/fall-alerts']['post']['requestBody']['description'],
+        );
+        self::assertSame(
+            'Fall alert accepted and queued for caregiver delivery.',
+            $documentation['paths']['/api/v1/fall-alerts']['post']['responses']['201']['description'],
+        );
         self::assertArrayNotHasKey(
             'requestBody',
             $documentation['paths']['/api/v1/fall-alerts/{clientAlertId}/cancel']['post'],

@@ -39,7 +39,9 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
             $openApi,
             '/api/v1/devices/register',
             ['429' => 'Too many device registration requests from this client.'],
-            ['platform' => 'ios', 'appVersion' => '1.0.0', 'deviceType' => 'protected_person'],
+            example: ['platform' => 'ios', 'appVersion' => '1.0.0', 'deviceType' => 'protected_person'],
+            requestDescription: 'Application installation and device role to register.',
+            successDescriptions: [201 => 'Device registered. The response includes the bearer token to store securely.'],
         );
         $this->documentPost(
             $openApi,
@@ -49,33 +51,35 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
                 '403' => 'A caregiver device cannot report a protected-person fall.',
                 '429' => 'Too many fall alert submissions from this client.',
             ],
-            [
+            example: [
                 'clientAlertId' => '019e3005-a828-7db0-818f-1e57d20add1f',
                 'fallTimestamp' => '2026-05-24T10:15:30+00:00',
                 'locale' => 'en',
                 'latitude' => 48.8566,
                 'longitude' => 2.3522,
             ],
+            requestDescription: 'Detected fall event and optional location.',
+            successDescriptions: [201 => 'Fall alert accepted and queued for caregiver delivery.'],
         );
         $this->documentPost($openApi, '/api/v1/fall-alerts/{clientAlertId}/cancel', [
             '401' => 'Missing or invalid device bearer token.',
             '403' => 'A caregiver device cannot cancel a protected-person fall.',
             '404' => 'No fall alert with that clientAlertId was found for the authenticated device.',
-        ]);
+        ], successDescriptions: [201 => 'Fall alert cancelled.']);
         $this->documentGet($openApi, '/api/v1/fall-alerts/{id}', [
             '401' => 'Missing or invalid device bearer token.',
             '404' => 'No fall alert with that identifier was found for the authenticated device.',
-        ]);
+        ], successDescriptions: [200 => 'Current fall-alert state.']);
         $this->documentPost($openApi, '/api/v1/invites', [
             '401' => 'Missing or invalid device bearer token.',
             '422' => 'Only a protected-person device can create an invitation.',
-        ]);
+        ], successDescriptions: [201 => 'Caregiver invitation created.']);
         $this->documentPost($openApi, '/api/v1/invites/{code}/accept', [
             '401' => 'Missing or invalid device bearer token.',
             '404' => 'The invitation code was not found, expired, or was already used.',
             '422' => 'Only a caregiver device can accept an invitation.',
             '429' => 'Too many invitation acceptance requests from this client.',
-        ]);
+        ], successDescriptions: [204 => 'Caregiver link created.']);
         $this->documentPost(
             $openApi,
             '/api/v1/caregiver/push-token',
@@ -83,17 +87,19 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
                 '401' => 'Missing or invalid device bearer token.',
                 '422' => 'Only a caregiver device can register a notification token.',
             ],
-            ['fcmToken' => 'example-firebase-cloud-messaging-token'],
+            example: ['fcmToken' => 'example-firebase-cloud-messaging-token'],
+            requestDescription: 'Firebase Cloud Messaging registration token for this caregiver device.',
+            successDescriptions: [204 => 'Notification token registered.'],
         );
         $this->documentGet($openApi, '/api/v1/caregiver/alerts', [
             '401' => 'Missing or invalid device bearer token.',
-        ]);
+        ], successDescriptions: [200 => 'Fall alerts for linked protected persons.']);
         $this->documentPost($openApi, '/api/v1/fall-alerts/{id}/acknowledge', [
             '401' => 'Missing or invalid device bearer token.',
             '403' => 'The caregiver is not linked to the protected person for this alert.',
             '404' => 'No fall alert with that identifier was found.',
             '429' => 'Too many alert acknowledgement requests from this client.',
-        ]);
+        ], successDescriptions: [204 => 'Alert acknowledgement recorded.']);
 
         return $openApi;
     }
@@ -101,9 +107,16 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
     /**
      * @param array<int, string>        $errors
      * @param array<string, mixed>|null $example
+     * @param array<int, string>        $successDescriptions
      */
-    private function documentPost(OpenApi $openApi, string $path, array $errors, ?array $example = null): void
-    {
+    private function documentPost(
+        OpenApi $openApi,
+        string $path,
+        array $errors,
+        ?array $example = null,
+        ?string $requestDescription = null,
+        array $successDescriptions = [],
+    ): void {
         $pathItem = $openApi->getPaths()->getPath($path);
         $operation = $pathItem?->getPost();
 
@@ -112,9 +125,10 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
         }
 
         $operation = $this->withErrors($operation, $errors);
+        $operation = $this->withResponseDescriptions($operation, $successDescriptions);
 
         if (null !== $example) {
-            $operation = $this->withJsonRequestExample($operation, $example);
+            $operation = $this->withJsonRequestExample($operation, $example, $requestDescription);
         }
 
         $openApi->getPaths()->addPath($path, $pathItem->withPost($operation));
@@ -122,8 +136,9 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
 
     /**
      * @param array<int, string> $errors
+     * @param array<int, string> $successDescriptions
      */
-    private function documentGet(OpenApi $openApi, string $path, array $errors): void
+    private function documentGet(OpenApi $openApi, string $path, array $errors, array $successDescriptions = []): void
     {
         $pathItem = $openApi->getPaths()->getPath($path);
         $operation = $pathItem?->getGet();
@@ -132,7 +147,10 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
             return;
         }
 
-        $openApi->getPaths()->addPath($path, $pathItem->withGet($this->withErrors($operation, $errors)));
+        $operation = $this->withErrors($operation, $errors);
+        $operation = $this->withResponseDescriptions($operation, $successDescriptions);
+
+        $openApi->getPaths()->addPath($path, $pathItem->withGet($operation));
     }
 
     /**
@@ -148,15 +166,35 @@ final readonly class FallGuardianOpenApiFactory implements OpenApiFactoryInterfa
     }
 
     /**
+     * @param array<int, string> $descriptions
+     */
+    private function withResponseDescriptions(Operation $operation, array $descriptions): Operation
+    {
+        foreach ($descriptions as $status => $description) {
+            $response = $operation->getResponses()[(string) $status] ?? null;
+
+            if ($response instanceof Response) {
+                $operation = $operation->withResponse($status, $response->withDescription($description));
+            }
+        }
+
+        return $operation;
+    }
+
+    /**
      * @param array<string, mixed> $example
      */
-    private function withJsonRequestExample(Operation $operation, array $example): Operation
+    private function withJsonRequestExample(Operation $operation, array $example, ?string $description): Operation
     {
         $requestBody = $operation->getRequestBody();
         $content = $requestBody?->getContent();
 
         if (null === $requestBody || null === $content) {
             return $operation;
+        }
+
+        if (null !== $description) {
+            $requestBody = $requestBody->withDescription($description);
         }
 
         $content = clone $content;
