@@ -6,6 +6,7 @@ namespace App\Domain\Caregiver\Response;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\OpenApi\Model\Operation;
 use App\Domain\Caregiver\Provider\CaregiverAlertsProvider;
 use App\Entity\FallAlert;
 use DateTimeInterface;
@@ -14,6 +15,12 @@ use DateTimeInterface;
     new GetCollection(
         uriTemplate: '/api/v1/caregiver/alerts',
         output: self::class,
+        openapi: new Operation(
+            tags: ['Caregiver alerts'],
+            summary: 'List caregiver fall alerts',
+            description: 'Returns alerts from protected persons linked to the authenticated caregiver device, including acknowledgement state.',
+            security: [['deviceBearer' => []]],
+        ),
         provider: CaregiverAlertsProvider::class,
     ),
 ])]

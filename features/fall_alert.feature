@@ -59,6 +59,21 @@ Feature: Fall alert management
     Then the response status code is 201
     And the response JSON field "status" equals "cancelled"
 
+  Scenario: Fall alert coordinates must be geographically valid
+    Given I register a protected person device
+    And I am authenticated as the protected person
+    When I send a POST request to "/api/v1/fall-alerts" with:
+      """
+      {
+        "clientAlertId": "fa-behat-invalid-location",
+        "fallTimestamp": "2025-01-01T12:00:00+00:00",
+        "locale": "en",
+        "latitude": 91,
+        "longitude": -181
+      }
+      """
+    Then the response status code is 422
+
   Scenario: Fall alert dispatches a push notification to a linked caregiver
     Given I register a protected person device
     And I register a caregiver device
